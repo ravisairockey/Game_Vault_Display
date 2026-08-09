@@ -37,6 +37,35 @@ export default function App() {
     })();
   }, []);
 
+  if (err) {
+    return (
+      <div className="app-root">
+        <CustomCursor />
+        <ScrollProgress />
+        <KineticGrid />
+        <header className="hero">
+          <div className="hero-inner">
+            <div className="hero-badge">
+              <span className="pulse-dot" />
+              PERSONAL GAME VAULT
+            </div>
+            <div className="hero-mesh">
+              <MeshText text="ZED'S VAULT" fontSize={150} />
+            </div>
+            <div className="global-error" style={{ marginTop: 24 }}>
+              ⚠ {err}
+            </div>
+            <p style={{ color: '#fff', marginTop: 12 }}>
+              If you are seeing this on GitHub Pages, the site may still be
+              building or the Supabase environment variables may not be
+              configured.
+            </p>
+          </div>
+        </header>
+      </div>
+    );
+  }
+
   const visible = useMemo(
     () => games.filter((g) => showNsfw || !g.nsfw),
     [games, showNsfw]
