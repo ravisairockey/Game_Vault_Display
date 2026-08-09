@@ -13,6 +13,7 @@ import TodoDeck from './components/TodoDeck';
 import { CATEGORY_META, CATEGORY_ORDER } from './lib/types';
 import type { Game } from './lib/types';
 import supabase from './lib/supabase';
+import { STATIC_GAMES } from './lib/games-static';
 
 export default function App() {
   const [games, setGames] = useState<Game[]>([]);
@@ -30,7 +31,9 @@ export default function App() {
         if (error) throw error;
         setGames((data ?? []) as Game[]);
       } catch (e) {
-        setErr((e as Error).message);
+        console.warn('Supabase fetch failed, using static fallback.', e);
+        setErr('Live database unreachable — showing offline archive.');
+        setGames(STATIC_GAMES);
       } finally {
         setLoading(false);
       }
@@ -62,164 +65,148 @@ export default function App() {
       <KineticGrid />
 
       {err && (
-        <header className="hero">
-          <div className="hero-inner">
-            <div className="hero-badge">
-              <span className="pulse-dot" />
-              PERSONAL GAME VAULT
-            </div>
-            <div className="hero-mesh">
-              <MeshText text="ZED'S VAULT" fontSize={150} />
-            </div>
-            <div className="global-error" style={{ marginTop: 24 }}>
-              ⚠ {err}
-            </div>
-            <p style={{ color: '#fff', marginTop: 12 }}>
-              If you are seeing this on GitHub Pages, the site may still be
-              building or the Supabase environment variables may not be
-              configured.
-            </p>
-          </div>
-        </header>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#ff9d9d' }}>
+          <p style={{ fontSize: 14 }}>⚠ {err}</p>
+        </div>
       )}
+
+      <header className="hero">
+        <img src={`${import.meta.env.BASE_URL}smoke.png`} className="hero-smoke" alt="" aria-hidden />
+        <div className="hero-inner">
+          <div className="hero-badge">
+            <span className="pulse-dot" />
+            {err ? 'OFFLINE ARCHIVE' : 'PERSONAL GAME VAULT'} · {games.length} TITLES
+          </div>
+
+          <div className="hero-mesh">
+            <MeshText text="ZED'S VAULT" fontSize={150} />
+          </div>
+
+          <div className="hero-vapor">
+            <TextVaporize
+              words={['CONQUERED.', 'PLATINUMED.', 'REPLAYED.', 'MASTERED.']}
+            />
+          </div>
+
+          <p className="hero-sub">
+            {err
+              ? 'Showing offline archive — live sync unavailable.'
+              : `A cinematic archive of every world I've bled, sprinted and stared through — ${games.length} games, roughly <b>${totalSize.toFixed(0)} GB</b> of pure obsession, curated for the channel.`}
+          </p>
+
+          <div className="hero-actions">
+            <a
+              className="btn-primary"
+              href="https://youtube.com/@AmilgaulZed"
+              target="_blank"
+              rel="noreferrer"
+              data-cursor
+            >
+              <Youtube size={18} /> @AmilgaulZed
+            </a>
+            <a className="btn-ghost" href="#library" data-cursor>
+              Enter the Library <ArrowDown size={16} />
+            </a>
+          </div>
+
+          <div className="hero-stats">
+            <Stat icon={<Gamepad2 size={18} />} label="Games" value={String(games.length)} accent="#D9FFF4" />
+            <Stat icon={<HardDrive size={18} />} label="Storage" value={`${(totalSize / 1024).toFixed(2)} TB`} accent="#EEF8CD" />
+            <Stat icon={<Trophy size={18} />} label="Categories" value={String(CATEGORY_ORDER.length)} accent="#FFC5AA" />
+          </div>
+        </div>
+        <div className="scroll-hint" data-cursor>
+          <span>scroll</span>
+          <ArrowDown size={14} />
+        </div>
+      </header>
+
+      {/* LIBRARY */}
+      <main id="library" className="library">
+        <div className="library-head">
+          <span className="section-kicker">the collection</span>
+          <SmokeyHeading text="Every World Worth The Grind" accent="#FFC5AA" />
+          <div className="nsfw-switch">
+            <label data-cursor>
+              <input
+                type="checkbox"
+                checked={showNsfw}
+                onChange={(e) => setShowNsfw(e.target.checked)}
+              />
+              <span className="switch-track"><span className="switch-thumb" /></span>
+              Show 18+ titles
+            </label>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="lib-loading">
+            <span className="spinner big" />
+            <p>Decrypting the vault…</p>
+          </div>
+        ) : games.length === 0 ? (
+          <div className="lib-loading">
+            <span className="spinner big" />
+            <p>Decrypting the vault…</p>
+          </div>
+        ) : (
+          CATEGORY_ORDER.filter((c) => grouped[c]?.length).map((cat) => {
+            const meta = CATEGORY_META[cat];
+            return (
+              <section key={cat} className="cat-section">
+                <div className="cat-header">
+                  <span className="cat-icon" style={{ background: `${meta.accent}22`, color: meta.accent }}>
+                    {meta.icon}
+                  </span>
+                  <div>
+                    <h3 className="cat-title">
+                      <RandomLetterSwap text={cat} />
+                    </h3>
+                    <p className="cat-blurb">
+                      {meta.blurb} · <b>{grouped[cat].length}</b> titles
+                    </p>
+                  </div>
+                </div>
+                <div className="card-grid">
+                  {grouped[cat].map((g, i) => (
+                    <GameCard key={g.id} game={g} index={i} />
+                  ))}
+                </div>
+              </section>
+            );
+          })
+        )}
+      </main>
 
       {!err && (
-        <>
-          {/* HERO */}
-          <header className="hero">
-            <img src={`${import.meta.env.BASE_URL}smoke.png`} className="hero-smoke" alt="" aria-hidden />
-            <div className="hero-inner">
-              <div className="hero-badge">
-                <span className="pulse-dot" />
-                PERSONAL GAME VAULT · {games.length} TITLES ARCHIVED
-              </div>
-
-              <div className="hero-mesh">
-                <MeshText text="ZED'S VAULT" fontSize={150} />
-              </div>
-
-              <div className="hero-vapor">
-                <TextVaporize
-                  words={['CONQUERED.', 'PLATINUMED.', 'REPLAYED.', 'MASTERED.']}
-                />
-              </div>
-
-              <p className="hero-sub">
-                A cinematic archive of every world I've bled, sprinted and stared
-                through — {games.length} games, roughly{' '}
-                <b>{totalSize.toFixed(0)} GB</b> of pure obsession, curated for the
-                channel.
-              </p>
-
-              <div className="hero-actions">
-                <a
-                  className="btn-primary"
-                  href="https://youtube.com/@AmilgaulZed"
-                  target="_blank"
-                  rel="noreferrer"
-                  data-cursor
-                >
-                  <Youtube size={18} /> @AmilgaulZed
-                </a>
-                <a className="btn-ghost" href="#library" data-cursor>
-                  Enter the Library <ArrowDown size={16} />
-                </a>
-              </div>
-
-              <div className="hero-stats">
-                <Stat icon={<Gamepad2 size={18} />} label="Games" value={String(games.length)} accent="#D9FFF4" />
-                <Stat icon={<HardDrive size={18} />} label="Storage" value={`${(totalSize / 1024).toFixed(2)} TB`} accent="#EEF8CD" />
-                <Stat icon={<Trophy size={18} />} label="Categories" value={String(CATEGORY_ORDER.length)} accent="#FFC5AA" />
-              </div>
-            </div>
-            <div className="scroll-hint" data-cursor>
-              <span>scroll</span>
-              <ArrowDown size={14} />
-            </div>
-          </header>
-
-          {/* LIBRARY */}
-          <main id="library" className="library">
-            <div className="library-head">
-              <span className="section-kicker">the collection</span>
-              <SmokeyHeading text="Every World Worth The Grind" accent="#FFC5AA" />
-              <div className="nsfw-switch">
-                <label data-cursor>
-                  <input
-                    type="checkbox"
-                    checked={showNsfw}
-                    onChange={(e) => setShowNsfw(e.target.checked)}
-                  />
-                  <span className="switch-track"><span className="switch-thumb" /></span>
-                  Show 18+ titles
-                </label>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="lib-loading">
-                <span className="spinner big" />
-                <p>Decrypting the vault…</p>
-              </div>
-            ) : (
-              CATEGORY_ORDER.filter((c) => grouped[c]?.length).map((cat) => {
-                const meta = CATEGORY_META[cat];
-                return (
-                  <section key={cat} className="cat-section">
-                    <div className="cat-header">
-                      <span className="cat-icon" style={{ background: `${meta.accent}22`, color: meta.accent }}>
-                        {meta.icon}
-                      </span>
-                      <div>
-                        <h3 className="cat-title">
-                          <RandomLetterSwap text={cat} />
-                        </h3>
-                        <p className="cat-blurb">
-                          {meta.blurb} · <b>{grouped[cat].length}</b> titles
-                        </p>
-                      </div>
-                    </div>
-                    <div className="card-grid">
-                      {grouped[cat].map((g, i) => (
-                        <GameCard key={g.id} game={g} index={i} />
-                      ))}
-                    </div>
-                  </section>
-                );
-              })
-            )}
-          </main>
-
-          {/* TODO + GRAVITY */}
-          <section className="quest-section">
-            <WaveArcs />
-            <div className="quest-inner">
-              <span className="section-kicker" style={{ color: '#D9FFF4' }}>
-                the backlog
-              </span>
-              <SmokeyHeading text="What I'm Grinding Next" accent="#EEF8CD" />
-              <p className="quest-lead">
-                A live quest log with per-game timers — then spill it all into a
-                gravity sandbox and toss the tiles around.
-              </p>
-              <TodoDeck />
-            </div>
-          </section>
-
-          <footer className="footer">
-            <div className="footer-mesh">
-              <MeshText text="GG" fontSize={120} />
-            </div>
-            <p>
-              Built for the channel ·{' '}
-              <a href="https://youtube.com/@AmilgaulZed" target="_blank" rel="noreferrer" data-cursor>
-                youtube.com/@AmilgaulZed
-              </a>
+        <section className="quest-section">
+          <WaveArcs />
+          <div className="quest-inner">
+            <span className="section-kicker" style={{ color: '#D9FFF4' }}>
+              the backlog
+            </span>
+            <SmokeyHeading text="What I'm Grinding Next" accent="#EEF8CD" />
+            <p className="quest-lead">
+              A live quest log with per-game timers — then spill it all into a
+              gravity sandbox and toss the tiles around.
             </p>
-            <p className="footer-sub">{games.length} games archived · {(totalSize / 1024).toFixed(2)} TB of memories</p>
-          </footer>
-        </>
+            <TodoDeck />
+          </div>
+        </section>
       )}
+
+      <footer className="footer">
+        <div className="footer-mesh">
+          <MeshText text="GG" fontSize={120} />
+        </div>
+        <p>
+          Built for the channel ·{' '}
+          <a href="https://youtube.com/@AmilgaulZed" target="_blank" rel="noreferrer" data-cursor>
+            youtube.com/@AmilgaulZed
+          </a>
+        </p>
+        <p className="footer-sub">{games.length} games archived · {(totalSize / 1024).toFixed(2)} TB of memories</p>
+      </footer>
     </div>
   );
 }
